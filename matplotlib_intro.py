@@ -33,6 +33,7 @@ ax[1].set_ylabel('Magnitude')
 ax[1].set_xlabel('Frequency ($s^{-1}$)')
 
 ax[0].legend(frameon=False,ncol=2,loc='upper right')
+
 fig.tight_layout()
 
 fig.savefig('signal_processing.pdf')
