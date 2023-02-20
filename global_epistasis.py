@@ -31,8 +31,7 @@ def get_background(N: int, p: int) -> List[int]:
         if not uses_power_of_2:
             binary_numbers.append(binary)
 
-    # Return the list of binary numbers
-
+    # Convert to integers base 10
     numbers = [int(x,2) for x in binary_numbers]
 
     return numbers
