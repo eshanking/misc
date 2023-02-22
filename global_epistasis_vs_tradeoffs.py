@@ -9,6 +9,12 @@ import pandas as pd
 
 np.random.seed(2023)
 
+def plot_global_epistasis(p,mut,conc):
+    bf,f = get_epistasis_data(p,mut,conc)
+    data = pd.DataFrame({'Background fitness':bf,'Fitness effect':f})
+    ax = sns.regplot(x='Background fitness',y='Fitness effect',data=data)
+
+
 def unif_to_norm(rho):
     return (4118/3163)*np.sin(rho/3) + (3183/3149)*np.sin(2*rho/3) - (145/2391)*np.sin(rho)
 
@@ -114,6 +120,24 @@ def get_max_delta_f(p):
         df_list.append(df)
 
     return np.max(np.abs(df_list))
+
+def get_max_ge_slope(p):
+    max_ic50 = np.max(p.ic50)
+
+    slope_list = []
+
+    for a in range(p.n_allele):
+        bg0,f0 = get_epistasis_data(p,a,-4)
+        res0 = np.corrcoef(bg0,f0)[0][1]
+
+        bg1,f1 = get_epistasis_data(p,a,max_ic50)
+        res1 = np.corrcoef(bg1,f1)[0][1]
+
+        slope_list.append(res0-res1)
+    
+    indx = np.argwhere(np.abs(slope_list) == np.max(np.abs(slope_list)))[0][0]
+
+    return slope_list[indx]
 
 #%% 1 allele
 
@@ -292,3 +316,47 @@ fig,ax = plt.subplots()
 
 ax = sns.jointplot(x='tradeoff_strength',y='df',data=data_3_allele,ax=ax)
 # %%
+# p = Population(fitness_data='random',n_allele=3)
+
+# dge = []
+# tradeoff_corr = []
+
+# for i in range(10000):
+#     ic50 = np.random.uniform(low=-3,high=3,size=p.n_genotype)
+#     drugless_rates = np.random.uniform(low=0.5,high=1.5,size=p.n_genotype)
+
+#     # ic50 = np.sort(ic50)
+
+#     p.ic50 = ic50
+#     p.drugless_rates = drugless_rates
+
+#     dge.append(get_max_ge_slope(p))
+
+#     # ts = stats.pearsonr(ic50,drugless_rates)
+#     ts = stats.spearmanr(ic50,drugless_rates)
+#     # tradeoff_corr.append(ts.statistic)
+#     tradeoff_corr.append(ts.correlation)
+
+#     # fig,ax = p.plot_fitness_curves()
+#     # ax.set_title(str(df[-1]))
+
+# fig,ax = plt.subplots(ncols=1,figsize=(5,4))
+
+# data_2_allele = pd.DataFrame({'tradeoff_corr':tradeoff_corr,'dge':dge})
+# # ax = sns.regplot(x='tradeoff_corr',y='dge',data=data_2_allele,scatter_kws={'alpha':0.1},
+#                 #  line_kws={'color':'darkorange','linewidth':3},ax=ax)
+# ax.scatter(tradeoff_corr,dge)
+# # ax.scatter(tradeoff_strength, df,alpha=0.1)
+# ax.set_ylabel('Max mean $\Delta GE$',fontsize=14)
+# ax.set_xlabel('IC$_{50}$ and drugless \ngrowth rate correlation',fontsize=14)
+# ax.set_title('N$_{allele}$ = 2',fontsize=14)
+# ax.spines['top'].set_visible(False)
+# ax.spines['right'].set_visible(False)
+# # ax.set_ylim(-50,50)
+
+# corr_matrix = np.corrcoef(tradeoff_strength, df)
+# corr = corr_matrix[0,1]
+# R_sq = corr**2
+
+# ax.set_ylim(-0.1,0.1)
+
