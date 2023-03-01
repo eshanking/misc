@@ -13,7 +13,7 @@ sample_times = np.arange(12)*30
 
 # sample_times = np.delete(sample_times,4)
 
-exp_folder = 'tk_02222023'
+exp_folder = 'tk_02282023'
 
 exp_files = os.listdir(exp_folder)
 
@@ -38,8 +38,6 @@ drug_conc = [str(dc) for dc in drug_conc]
 
 norm_indx = 1
 
-#%% Helper functions
-
 def rolling_average(x,N):
     
     indx = 0
@@ -53,102 +51,6 @@ def rolling_average(x,N):
         res.append(np.nanmean(x[indx+i:]))
 
     return np.array(res)
-
-"""
-# Model adapted from
-Li RC. Simultaneous pharmacodynamic analysis of the lag and bactericidal phases
-exhibited by beta-lactams against Escherichia coli. Antimicrob Agents 
-Chemother. 1996;40(10):2306-2310. doi:10.1128/AAC.40.10.2306
-"""
-
-# def time_kill_model(t,kss,alpha,y0):
-#     # Growth rate constant of control arbitrarily set to zero
-#     res = []
-#     for tt in t:
-#         res.append(y0 - kss*tt + (kss/alpha)*(1-np.exp(-1*alpha*tt)))
-#     return res
-
-def time_kill_model(t,alpha,A,l): # decreasing signal
-    res = []
-    for tt in t:
-        res.append(A*np.exp(alpha*(tt-l)))
-    return res
-
-def est_time_kill(xdata,ydata,debug=False):
-
-
-    # alpha,A,l
-
-    A_est = ydata[0]
-    alpha_est = 0
-    p0 = [alpha_est,A_est,0]
-    # bounds = [[-np.inf,A_est-0.2*(np.abs(A_est)),-np.inf],
-    #     [np.inf,A_est+0.2*(np.abs(A_est)),np.inf]]
-
-    popt,pcov = scipy.optimize.curve_fit(time_kill_model,xdata,ydata,p0=p0)
-
-    if debug:
-
-        y_opt = time_kill_model(xdata,popt[0],popt[1],popt[2])
-        
-        fig,ax = plt.subplots()
-        ax.plot(xdata,y_opt)
-        ax.plot(xdata,ydata)
-        ax.set_title(popt[0])
-
-    return popt
-
-def pharmacodynamic_curve(c, gmax, gmin, mic, k):
-    """pharmacodynamic model adapted from Foerster et al.
-
-    Foerster, S., Unemo, M., Hathaway, L.J. et al. Time-kill curve analysis and
-    pharmacodynamic modelling for in vitro evaluation of antimicrobials against Neisseria
-    gonorrhoeae . BMC Microbiol 16, 216 (2016). 
-    https://doi.org/10.1186/s12866-016-0838-9
-
-    Args:
-        c (float): drug concentration
-        gmax (float): max growth rate
-        gmin (float): min growth rate
-        mic (float): estimated minimum inhibitory concentration
-        k (float): hill coefficient
-    """
-    g = []
-    for c_t in c:
-        g.append(gmax - (((gmax-gmin)*(c_t/mic)**k)/((c_t/mic)**k-(gmin/gmax))))
-    
-    return g
-
-def est_pharm_curve(xdata,ydata,debug=False):
-
-
-    # gmax,gmin,mic,k
-
-    g_max_est = ydata[0]
-    gmin_est = np.min(ydata)
-
-    p0 = [g_max_est,gmin_est,1,0.1]
-
-    # p0 = [1,g_drugless_est,-1,0]
-    # bounds = ([-np.inf,g_drugless_est-g_drugless_est*0.05,-2,0],
-    #           [np.inf,g_drugless_est+g_drugless_est*0.05,-0.1,np.inf])
-
-    popt,pcov = scipy.optimize.curve_fit(pharmacodynamic_curve,xdata,ydata,p0=p0)
-
-    if debug:
-        
-        dc_fit = np.logspace(-3,3)
-        y_opt = pharmacodynamic_curve(dc_fit,popt[0],popt[1],popt[2],popt[3])
-        
-        fig,ax = plt.subplots()
-        ax.plot(dc_fit,y_opt)
-        ax.plot(xdata,ydata,'o')
-
-        ax.set_xscale('log')
-
-    return popt
-
-#%% Background normalization and data cleaning
 
 for ef in exp_files:
 
@@ -169,8 +71,14 @@ for ef in exp_files:
 
             bg_data[bg_data==0] = 1
 
+            # bg_data = np.ones(len(bg_data))
+
             ts[ts=='OVER'] = np.nan
             ts_norm = np.divide(ts,bg_data)
+
+            # ts_norm = np.array(ts_norm).astype(float)
+
+            # ts_norm = rolling_average(ts_norm,10)
 
             p.data[key] = ts_norm
     
@@ -205,7 +113,7 @@ data['Time [s]'] = data['Time [s]'] - np.min(data['Time [s]'])
 
 # Estimate peak fluorescence for each drug concentration at each sample time
 
-#%% Plot raw fluorescence timecourse
+#%%
 fig,ax_list = plt.subplots(nrows=4,ncols=2,figsize=(8,10))
 ax_list_t = ax_list.reshape(-1)
 
@@ -240,7 +148,7 @@ for row in row_list[0:-1]:
 
         # ax.set_xlim(0,17000)
         col_indx+=1
-    ax.set_xlim(-2000,50000)
+    ax.set_xlim(-1000,17000)
     ax.set_title(drug_conc[ax_indx])
     ax_indx+=1
 
@@ -256,7 +164,7 @@ fig.legend(ncol=6,frameon=False,loc=(0.1,-0.01))
 fig.savefig('all_fluorescence_timecouses.pdf',bbox_inches='tight')
 # %%
 
-# Get auc
+# Get max fluorescence
 max_dict = {}
 
 for row in row_list[0:-1]: # for each drug conc
@@ -351,7 +259,25 @@ fig2.savefig('max_fluorescence_over_time.pdf',bbox_inches='tight')
 
 #%% Fit exponentials
 
+"""
+# Model adapted from
+Li RC. Simultaneous pharmacodynamic analysis of the lag and bactericidal phases
+exhibited by beta-lactams against Escherichia coli. Antimicrob Agents 
+Chemother. 1996;40(10):2306-2310. doi:10.1128/AAC.40.10.2306
+"""
 
+# def time_kill_model(t,kss,alpha,y0):
+#     # Growth rate constant of control arbitrarily set to zero
+#     res = []
+#     for tt in t:
+#         res.append(y0 - kss*tt + (kss/alpha)*(1-np.exp(-1*alpha*tt)))
+#     return res
+
+def time_kill_model(t,alpha,A,l): # decreasing signal
+    res = []
+    for tt in t:
+        res.append(A*np.exp(alpha*(tt-l)))
+    return res
 
 # def time_kill_model_pos(t,alpha,y0,l): # increasing signal
 #     res = []
@@ -364,6 +290,32 @@ fig2.savefig('max_fluorescence_over_time.pdf',bbox_inches='tight')
 #     for tt in t:
 #         res.append(A*(1-np.exp(-(alpha)*(tt-l))))
 #     return res
+
+def est_time_kill(xdata,ydata,debug=False):
+
+
+    # alpha,A,l
+
+    A_est = ydata[0]
+    alpha_est = 0
+    p0 = [alpha_est,A_est,0]
+    # bounds = [[-np.inf,A_est-0.2*(np.abs(A_est)),-np.inf],
+    #     [np.inf,A_est+0.2*(np.abs(A_est)),np.inf]]
+
+    popt,pcov = scipy.optimize.curve_fit(time_kill_model,xdata,ydata,p0=p0)
+
+    if debug:
+
+        y_opt = time_kill_model(xdata,popt[0],popt[1],popt[2])
+        
+        fig,ax = plt.subplots()
+        ax.plot(xdata,y_opt)
+        ax.plot(xdata,ydata)
+        ax.set_title(popt[0])
+
+    return popt
+
+
 # make everything positive
 
 alpha = []
@@ -422,6 +374,56 @@ ax.plot(dc,alpha,'o')
 #             g.append((g_drugless/(1+np.exp((IC50-np.log10(x_t))/hill_coeff)))-r_d)
 
 #     return g
+
+def pharmacodynamic_curve(c, gmax, gmin, mic, k):
+    """pharmacodynamic model adapted from Foerster et al.
+
+    Foerster, S., Unemo, M., Hathaway, L.J. et al. Time-kill curve analysis and
+    pharmacodynamic modelling for in vitro evaluation of antimicrobials against Neisseria
+    gonorrhoeae . BMC Microbiol 16, 216 (2016). 
+    https://doi.org/10.1186/s12866-016-0838-9
+
+    Args:
+        c (float): drug concentration
+        gmax (float): max growth rate
+        gmin (float): min growth rate
+        mic (float): estimated minimum inhibitory concentration
+        k (float): hill coefficient
+    """
+    g = []
+    for c_t in c:
+        g.append(gmax - (((gmax-gmin)*(c_t/mic)**k)/((c_t/mic)**k-(gmin/gmax))))
+    
+    return g
+
+def est_pharm_curve(xdata,ydata,debug=False):
+
+
+    # gmax,gmin,mic,k
+
+    g_max_est = ydata[0]
+    gmin_est = np.min(ydata)
+
+    p0 = [g_max_est,gmin_est,1,0.1]
+
+    # p0 = [1,g_drugless_est,-1,0]
+    # bounds = ([-np.inf,g_drugless_est-g_drugless_est*0.05,-2,0],
+    #           [np.inf,g_drugless_est+g_drugless_est*0.05,-0.1,np.inf])
+
+    popt,pcov = scipy.optimize.curve_fit(pharmacodynamic_curve,xdata,ydata,p0=p0)
+
+    if debug:
+        
+        dc_fit = np.logspace(-3,3)
+        y_opt = pharmacodynamic_curve(dc_fit,popt[0],popt[1],popt[2],popt[3])
+        
+        fig,ax = plt.subplots()
+        ax.plot(dc_fit,y_opt)
+        ax.plot(xdata,ydata,'o')
+
+        ax.set_xscale('log')
+
+    return popt
 
 # min_alpha = np.min(alpha)
 
