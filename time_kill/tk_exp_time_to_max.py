@@ -36,7 +36,7 @@ row_list = ['A','B','C','D','E','F','G','H']
 drug_conc = [0,'$10^{-2}$','$10^{-1}$','1','10','$10^{2}$','$10^{3}$']
 drug_conc = [str(dc) for dc in drug_conc]
 
-#%% Helper functions
+# Helper functions
 
 def rolling_average(x,N):
     
@@ -50,7 +50,11 @@ def rolling_average(x,N):
     for i in range(len(x[indx:])):
         res.append(np.nanmean(x[indx+i:]))
 
-    return np.array(res)
+    res = np.array(res)
+    x = np.array(x)
+    res[x == 0] = 0
+
+    return res
 
 """
 # Model adapted from
@@ -162,19 +166,21 @@ for ef in exp_files:
     
     # normalize to bottom row
     # estimate background and exclude 6,7,9,10,11,12 because of contamination
-    bg_key = 'H1'
-    bg_data = np.array(p.data[bg_key])
+    # bg_key = 'H1'
+    # bg_data = np.array(p.data[bg_key])
 
-    for col in [2,3,4,5,8]:
-        bg_key = row_list[-1] + str(col)
-        bg_data += np.array(p.data[bg_key])
+    # for col in [2,3,4,5,8]:
+    #     bg_key = row_list[-1] + str(col)
+    #     bg_data += np.array(p.data[bg_key])
     
-    bg_data = bg_data/5
+    # bg_data = bg_data/5
+
+    p.data = p.data.drop(p.data.index[0:2]) # remove first datapoint because of a systematic drop in fluorescence
 
     for col in range(1,cur_col+1):
         
-        # bg_key = row_list[-1] + str(col)
-        # bg_data = p.data[bg_key]
+        bg_key = row_list[-1] + str(col)
+        bg_data = p.data[bg_key]
 
         for row in row_list[0:-1]:
 
@@ -185,7 +191,6 @@ for ef in exp_files:
 
             ts[ts=='OVER'] = np.nan
             ts_norm = np.divide(ts,bg_data)
-            ts_norm = rolling_average(ts_norm,10)
 
             p.data[key] = ts_norm
     
@@ -245,23 +250,31 @@ cmap = mpl.colormaps['viridis']
 for row in row_list[0:-1]:
     col_indx = 0
     ax = ax_list_t[ax_indx]
-    for col in range(1,13):
+    # for col in range(1,13):
+    for col in [1,2,3,4,5,8]:
+
         key = row + str(col)
+        
         if row == 'A':
             label=round(sample_times[col_indx])
         else:
             label=None
 
-        sample_time = sample_times[col_indx]*60
-        time_t = time
+        sample_time = sample_times[col-1]*60 - 30*60
+        time_t = time - sample_time
+        # time_t = time
 
         ts = np.array(data[key]).astype(float)
 
+        ts = rolling_average(ts,10)
+
+        # data[key] = ts
+
         ax.plot(time_t,ts,label=label,color=cmap(col_indx/11),linewidth=2)
 
-        indx = np.argwhere(time_t>sample_time)[0][0]
+        indx = np.argwhere(time_t>=sample_time)[0][0]
 
-        ax.plot(time_t[indx],ts[indx],'*',color='black')
+        # ax.plot(time_t[indx],ts[indx],'*',color='black')
 
         # max_fluor = np.nanmax(ts)
         # indx = np.argwhere(ts==max_fluor)[0][0]
@@ -273,7 +286,7 @@ for row in row_list[0:-1]:
 
         # ax.set_xlim(0,17000)
         col_indx+=1
-    ax.set_xlim(-100,20000)
+    ax.set_xlim(-100,80000)
     ax.set_title(drug_conc[ax_indx])
     ax_indx+=1
 
@@ -284,7 +297,7 @@ for row in range(4):
         pos.y1 = pos.y1 - 0.02*row
         ax_list[row,col].set_position(pos)
 
-fig.legend(ncol=6,frameon=False,loc=(0.1,-0.01))
+fig.legend(ncol=6,frameon=False,loc=(0.1,0))
 
 fig.savefig('all_fluorescence_timecouses.pdf',bbox_inches='tight')
 # %%
