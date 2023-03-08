@@ -256,7 +256,7 @@ for row in row_list[0:-1]:
         key = row + str(col)
         
         if row == 'A':
-            label=round(sample_times[col_indx])
+            label=round(sample_times[col-1])
         else:
             label=None
 
@@ -266,13 +266,13 @@ for row in row_list[0:-1]:
 
         ts = np.array(data[key]).astype(float)
 
-        ts = rolling_average(ts,10)
+        # ts = rolling_average(ts,10)
 
         # data[key] = ts
 
-        ax.plot(time_t,ts,label=label,color=cmap(col_indx/11),linewidth=2)
+        ax.plot(time_t,ts,label=label,color=cmap(col/6),linewidth=2)
 
-        indx = np.argwhere(time_t>=sample_time)[0][0]
+        # indx = np.argwhere(time_t>=sample_time)[0][0]
 
         # ax.plot(time_t[indx],ts[indx],'*',color='black')
 
