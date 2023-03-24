@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 cells = np.array([432,60,(31+17)/2,0])*10**5
+cells = cells/50
 od = np.array([np.mean([1.28,1.34,1.35]),
                np.mean([0.24,0.29,0.27]),
                np.mean([0.11,0.12,0.12]),
@@ -43,7 +44,7 @@ od_old = od
 #%% More OD measurements
 
 proportion = np.array([1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0])
-cell_num = proportion*432*10**5
+cell_num = (proportion*432*10**5)/50
 od = np.array([1.32,1.22,1.13,1.03,0.98,0.866,0.738,0.589,0.44,0.31,0.09])
 
 fig2,ax2 = plt.subplots()

@@ -65,6 +65,7 @@ for row_indx in range(8):
     for col in range(1,11):
         key = row_list[row_indx] + str(col+1)
         ts = np.array(data[key])
+
         final_plate[row_indx,col-1] = ts[-1]
 
 # final_plate = final_plate - np.min(final_plate)
@@ -102,11 +103,13 @@ ax.plot(dc_fit_plot,yfit,color='red')
 cmap = mpl.colormaps['viridis']
 fig,ax_list = plt.subplots(nrows=10,figsize=(3,8))
 
+time_vect = data['Time [s]']
+
 for row_indx in range(8):
     for col in range(1,11):
         key = row_list[row_indx] + str(col+1)
         ts = np.array(data[key])
-        ax_list[col-1].plot(ts,color=cmap(row_indx/8))
+        ax_list[col-1].plot(time_vect,ts,color=cmap(row_indx/8))
 # %%
 
 spline_fit = scipy.interpolate.CubicSpline(dc_log,mean_fluor)

@@ -13,7 +13,7 @@ sample_times = np.arange(12)*30
 
 # sample_times = np.delete(sample_times,4)
 
-exp_folder = 'tk_02282023'
+exp_folder = 'tk_01042023'
 
 exp_files = os.listdir(exp_folder)
 
@@ -33,10 +33,8 @@ col_indx = 1
 row_list = ['A','B','C','D','E','F','G','H']
 
 # drug_conc = [0,0.25,0.5,1,2,4,8]
-drug_conc = [0,'$10^{-2}$','$10^{-1}$','1','10','$10^{2}$','$10^{3}$']
+drug_conc = [0,'$10^{-2}$','$10^{-1}$','1','10','$10^{2}$','$10^{3}$',0]
 drug_conc = [str(dc) for dc in drug_conc]
-
-norm_indx = 1
 
 def rolling_average(x,N):
     
@@ -52,6 +50,8 @@ def rolling_average(x,N):
 
     return np.array(res)
 
+#%%
+norm_indx = 1
 for ef in exp_files:
 
     path_t = os.getcwd() + os.sep + exp_folder + os.sep + ef
@@ -64,10 +64,10 @@ for ef in exp_files:
         bg_key = row_list[-1] + str(col)
         bg_data = p.data[bg_key]
 
-        for row in row_list:
+        for row in row_list[0:-1]:
 
             key = row + str(col)
-            ts = p.data[key]
+            ts = np.array(p.data[key])
 
             bg_data[bg_data==0] = 1
 
@@ -123,7 +123,7 @@ time = data['Time [s]']
 
 cmap = mpl.colormaps['viridis']
 
-for row in row_list[0:-1]:
+for row in row_list:
     col_indx = 0
     ax = ax_list_t[ax_indx]
     for col in range(1,13):
@@ -138,7 +138,7 @@ for row in row_list[0:-1]:
 
         ts = np.array(data[key]).astype(float)
 
-        ts = rolling_average(ts,10)
+        # ts = rolling_average(ts,10)
 
         data[key] = ts
 
@@ -148,7 +148,7 @@ for row in row_list[0:-1]:
 
         # ax.set_xlim(0,17000)
         col_indx+=1
-    ax.set_xlim(-1000,17000)
+    # ax.set_xlim(-1000,17000)
     ax.set_title(drug_conc[ax_indx])
     ax_indx+=1
 
