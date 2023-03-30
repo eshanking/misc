@@ -8,15 +8,20 @@ from scipy.signal import butter, lfilter
 import scipy
 from scipy.integrate import odeint
 
-data_file = 'EK_AB_20230324_090141.xlsx'
+# data_file = 'EK_AB_20230324_090141.xlsx'
+data_file = 'EK_AB_20230330_101642.xlsx'
 
 row_list = ['B','C','D','E','F','G']
 col_list = [2,3,4,5,6,7,8,9,10,11]
 col_list = [str(col) for col in col_list]
 
-sample_times = [0,30,90,210,390]
-# 11:12:44
-st_data_cleaning = [32*60-13,93*60+7,213*60+-18,397*60-26]
+# sample_times = [0,30,90,210,390]
+# # 11:12:44
+# st_data_cleaning = [32*60-13,93*60+7,213*60+-18,397*60-26]
+
+# 10:01:12
+st_data_cleaning = [24*60+12,55*60+21,89*60+27,203*60-13]
+sample_times = [0,26,56,89,233]
 
 dc = [0,10**-1,10**0,10,10**2,10**3]
 mic = 0.1
@@ -24,6 +29,12 @@ mic = 0.1
 dc = [c*mic for c in dc]
 
 #%% Helper functions
+def get_piecewise_slope(xdata,ydata):
+    slopes = []
+    for i in range(len(xdata)-1):
+        slopes.append((ydata[i]-ydata[i+1])/(xdata[i]-xdata[i+1]))
+    return np.array(slopes)
+
 def est_time_kill(xdata,ydata,debug=False):
     # alpha,A,l
     
@@ -238,14 +249,14 @@ for row in row_list:
         # ax.plot(time_vect-si,ts_avg,color=cmap(sample_indx/5))
         ax.plot(time_vect-si,ts1,color=cmap(sample_indx/5))
         ax.plot(time_vect-si,ts2,'--',color=cmap(sample_indx/5))
-        ax.set_ylim(0,200000)
-        ax.set_xlim(0,60000)
+        # ax.set_ylim(0,200000)
+        # ax.set_xlim(0,60000)
         sample_indx+=1
 
     row_indx+=1
 # %% time to 200,000 
 
-thresh = 200000
+thresh = 190000
 res = {}
 
 samples = ['0','1','2','3','4']
@@ -300,17 +311,17 @@ for key in res.keys():
     ydata = (-1.7*10**-4)*ydata - 2.96*10**-1
     # ydata = 10**ydata
 
-    cell_count.append(ydata + 9)
+    cell_count.append(ydata + 8)
 
     st = sample_times
 
-    if key == '4':
-        ydata = ydata[0:-1]
-        st = st[0:-1]
+    # if key == '4':
+    #     ydata = ydata[0:-1]
+    #     st = st[0:-1]
 
-    if key == '3':
-        ydata = ydata[0:-1]
-        st = st[0:-1]
+    # if key == '3':
+    #     ydata = ydata[0:-1]
+    #     st = st[0:-1]
 
     ax.plot(st,ydata,color=cmap(indx/5),label=round(dc[indx],2))
 
@@ -354,66 +365,49 @@ sample_times_trunc = []
 
 for i in range(len(cell_count)):
     
-    if i in [0,1,3,4]:
-        cell_count_trunc.append(cell_count[i][0:-1])
-        sample_times_trunc.append(sample_times[0:-1])
-    # elif i == 5:
-    #     cell_count_trunc.append(cell_count[i][0:-2])
-    #     sample_times_trunc.append(sample_times[0:-2])
-    else:
-        cell_count_trunc.append(cell_count[i])
-        sample_times_trunc.append(sample_times)
+    # if i in [0,1,3,4]:
+    #     cell_count_trunc.append(cell_count[i][0:-1])
+    #     sample_times_trunc.append(sample_times[0:-1])
+    # # elif i == 5:
+    # #     cell_count_trunc.append(cell_count[i][0:-2])
+    # #     sample_times_trunc.append(sample_times[0:-2])
+    # else:
+    cell_count_trunc.append(cell_count[i])
+    sample_times_trunc.append(sample_times)
 
-killing_rate = []
-alpha_est = []
-alpha_fit = []
+# killing_rate = []
+# alpha_est = []
+# alpha_fit = []
 
-# estimate K
-st = sample_times[0:len(cell_count_trunc[0])]
-popt = est_net_growth(st,cell_count_trunc[0],debug=True)
-K = popt[1]
-# K = 0.008515791380952379
-N0 = popt[0]
+# # estimate K
+# st = sample_times[0:len(cell_count_trunc[0])]
+# popt = est_net_growth(st,cell_count_trunc[0],debug=True)
+# K = popt[1]
+# # K = 0.008515791380952379
+# N0 = popt[0]
 
-killing_rate.append(popt[2])
-alpha_est.append(popt[-1])
+# killing_rate.append(popt[2])
+# alpha_est.append(popt[-1])
 
-alpha_fit.append(popt[-1])
+# alpha_fit.append(popt[-1])
 
-indx = 0
-for cc in cell_count_trunc[1:]:
-    st = sample_times[0:len(cc)]
-    popt = est_net_growth(st,cc,K=K,N0=N0,debug=True,prev_alpha=alpha_fit[-1],alpha_diff=1)
-    # popt = est_net_growth(st,cc,K=K,N0=N0,debug=True)
-    killing_rate.append(popt[0])
-    if indx == 0:
-        alpha_fit.append(popt[-1]/100)
-    else:
-        alpha_fit.append(popt[-1])
-    alpha_est.append(popt[-1])
-    indx += 1
+# indx = 0
+# for cc in cell_count_trunc[1:]:
+#     st = sample_times[0:len(cc)]
+#     popt = est_net_growth(st,cc,K=K,N0=N0,debug=True,prev_alpha=alpha_fit[-1],alpha_diff=1)
+#     # popt = est_net_growth(st,cc,K=K,N0=N0,debug=True)
+#     killing_rate.append(popt[0])
+#     if indx == 0:
+#         alpha_fit.append(popt[-1]/100)
+#     else:
+#         alpha_fit.append(popt[-1])
+#     alpha_est.append(popt[-1])
+#     indx += 1
 
 
-# %%
-
-net_growth = np.array(K-killing_rate)*60
-
-popt = est_pharm_curve(dc,net_growth,debug=True)
-
-fig,ax = plt.subplots()
-
-dc_fit = np.linspace(-3,3,num=100)
-dc_fit = 10**dc_fit
-dc_fit[0] = 0
-g_fit = pharmacodynamic_curve(dc_fit,popt[0],popt[1],popt[2],popt[3])
-dc_fit_plot = np.linspace(-3,3,num=100)
-
-ax.scatter(dc,net_growth)
-ax.plot(dc_fit,g_fit)
-ax.set_xscale('log')
 # %% Try ODEint
 
-sample_times_hr = [t/60 for t in sample_times]
+sample_times_hr = np.array([t/60 for t in sample_times])
 
 def growth_diffeq(logN,t,K,Kss,alpha,cc):
     # cc = 8.55 # carrying capacity
@@ -429,14 +423,15 @@ def growth_sol(t,y0,K,Kss,alpha,cc):
     return y[:,0]
 
 
-p0 = [6.5,0.1,0,0.02,8.55]
-bounds = [[0,0,0,10**-5,8],[10,10,10,0.3,9]]
+p0 = [6.5,0.1,0,0.2,7.5]
+bounds = [[0,0,0,10**-1,6],[10,10,10,0.3,8]]
 popt,pcov = scipy.optimize.curve_fit(growth_sol,sample_times_hr,cell_count[0],maxfev=10000,p0=p0,bounds=bounds)
 K = popt[1]
 N0 = popt[0]
 carry_cap = popt[4]
 
-fig,ax = plt.subplots()
+fig,ax_list = plt.subplots(nrows=6,figsize=(4,11))
+ax = ax_list[0]
 yest = growth_sol(sample_times_hr,popt[0],popt[1],popt[2],popt[3],popt[4])
 ax.plot(sample_times_hr,yest)
 ax.scatter(sample_times_hr,cell_count[0])
@@ -447,10 +442,26 @@ killing_rate = []
 alpha_est.append(popt[3])
 killing_rate.append(popt[2])
 
+prev_alpha = 0.1
+indx = 1
 for c_count in cell_count_trunc[1:]:
-    p0 = [0,0.2]
-    bounds = [[0,10**-1],[1000,1]]
-    st = sample_times_hr[0:len(c_count)]
+# for c_count in [cell_count_trunc[2]]:
+
+    ax = ax_list[indx]
+    st = sample_times_hr[c_count>0]
+    c_count = c_count[c_count>0]
+
+    # get Kss upper bound
+    slopes = get_piecewise_slope(st,c_count)
+
+    if any(slopes<0):
+        max_Kss = -np.min(slopes)
+    else:
+        max_Kss = 10
+
+    p0 = [0,1.1]
+    bounds = [[0,0.1],[max_Kss,100]]
+    
     popt,pcov = scipy.optimize.curve_fit(lambda t,Kss,alpha: growth_sol(t,N0,K,Kss,alpha,carry_cap),
                                          st,c_count,maxfev=10000,p0=p0,bounds=bounds)
 
@@ -460,4 +471,28 @@ for c_count in cell_count_trunc[1:]:
 
     alpha_est.append(popt[1])
     killing_rate.append(popt[0])
+    prev_alpha = popt[1]
+    indx+=1
+    # ax.set_ylim(4,8)
+# %%
+killing_rate_t = np.array(killing_rate)
+dc_t = np.array(dc)
+killing_rate_t = killing_rate_t[[0,1,2,4,5]]
+dc_t = dc_t[[0,1,2,4,5]]
+
+net_growth = np.array(K-killing_rate_t)
+
+popt = est_pharm_curve(dc_t,net_growth,debug=True)
+
+fig,ax = plt.subplots()
+
+dc_fit = np.linspace(-3,3,num=100)
+dc_fit = 10**dc_fit
+dc_fit[0] = 0
+g_fit = pharmacodynamic_curve(dc_fit,popt[0],popt[1],popt[2],popt[3])
+dc_fit_plot = np.linspace(-3,3,num=100)
+
+ax.scatter(dc_t,net_growth)
+ax.plot(dc_fit,g_fit)
+ax.set_xscale('log')
 # %%

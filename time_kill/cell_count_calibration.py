@@ -56,14 +56,13 @@ for i in range(10):
 
 fig,ax = plt.subplots()
 
-ax.scatter(dilution,res,marker='*')
+ax.scatter(res,dilution,marker='*')
 
-ax.set_xscale('log')
+ax.set_yscale('log')
 
-ax.set_ylabel('Time to RFU 200000 (min)')
-ax.set_xlabel('Dilution factor');
+ax.set_xlabel('Time to RFU 200000 (min)')
+ax.set_ylabel('Dilution factor');
 
-# %%
 dil_log = np.log10(dilution[1:])
 res_fit = np.array(res[1:])*60
 
@@ -72,5 +71,5 @@ lin_fit = np.polyfit(res_fit,dil_log,1)
 time_to_thresh_fit = np.linspace(0,600*60)
 dil_fit = lin_fit[0]*time_to_thresh_fit + lin_fit[1]
 
-plt.plot(time_to_thresh_fit,dil_fit)
+ax.plot(time_to_thresh_fit/60,10**dil_fit)
 # %%
