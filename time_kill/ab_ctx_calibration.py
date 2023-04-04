@@ -110,6 +110,7 @@ for row_indx in range(8):
         key = row_list[row_indx] + str(col+1)
         ts = np.array(data[key])
         ax_list[col-1].plot(time_vect,ts,color=cmap(row_indx/8))
+        ax_list[col-1].set_xlim(0,3600)
 # %%
 
 spline_fit = scipy.interpolate.CubicSpline(dc_log,mean_fluor)
