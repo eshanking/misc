@@ -1,8 +1,11 @@
+#%%
 from fears.utils import AutoRate
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from scipy import stats
+import scipy.interpolate as interp
+import scipy.optimize as sciopt
 
 ab_plate_path = 'calibration_04132023/EK_AB_20230414_111621.xlsx'
 od_plate_path = 'calibration_04132023/EK_single_OD600_20230413_120140.xlsx'
@@ -34,6 +37,19 @@ for row in row_list:
         key = row+col
         od_data[key] = od_data[key] - bg_est
 
+#%% estimate ab background
+
+time_vect = np.array(p_ab.data['Time [s]'])
+bg = np.zeros(len(time_vect))
+
+indx = 0
+for row in row_list:
+    key = row + '11'
+    bg += np.array(p_ab.data[key]).astype('float64')
+    indx += 1
+bg = bg/indx
+
+plt.plot(bg)
 #%% estimate cell count per column
 
 def od_to_cells(od):
@@ -63,7 +79,6 @@ for i in range(10):
     cell_count.append(cell_count_col_1/(2**i))
 
 # %%
-time_vect = np.array(p_ab.data['Time [s]'])
 
 fig,ax_list = plt.subplots(nrows=2)
 cmap = mpl.colormaps['viridis']
@@ -244,4 +259,110 @@ def rfu_to_cell_count(rfu):
     dilution_factor = 8.66 + (-1.812*10**-5)*rfu
     dilution_factor=2**(-dilution_factor)
     return dilution_factor*90000
+# %%
+
+# Graphs for fluorescence values vs. dilution using area under the curve from 0-60 min
+# print('Graphs for fluorescence values vs. dilution using area under the curve from 0-60 min\n')
+fig3,ax = plt.subplots()
+
+col_indx=0
+
+curve_area_no_drug_avg = np.zeros(9)
+curve_area_no_drug = np.zeros((3,9))
+curve_area_drug = np.zeros((3, 9))
+
+for col in col_list[1:]:
+    ts_avg = np.zeros(len(time_vect))
+    
+    row_indx = 0
+    for row in ['B','C','D']:
+        key = row + str(col)
+        ts = np.array(p_ab.data[key]).astype('float64') - bg
+        ts_spline = interp.InterpolatedUnivariateSpline(time_vect[:-1:]/60, ts[:-1:])
+        curve_area_no_drug[row_indx][col_indx] = ts_spline.integral(0, 60)
+        ts_avg += ts
+        row_indx += 1
+    ts_avg = ts_avg/3
+    ts_spline = interp.InterpolatedUnivariateSpline(time_vect[:-1:]/60, ts_avg[:-1:])
+
+    curve_area_no_drug_avg[col_indx] = ts_spline.integral(0, 60)
+
+    row_indx = 0
+    for row in ['E','F','G']:
+
+        key = row + str(col)
+        ts = np.array(p_ab.data[key]).astype('float64') - bg
+        ts_drug_spline = interp.InterpolatedUnivariateSpline(time_vect[:-1:]/60, ts[:-1:])
+        #ax_list3[row_indx].plot(xfine,ts_drug_spline(xfine, 0),color=cmap(col_indx/8),label=dilution[col_indx])
+        curve_area_drug[row_indx][col_indx] = ts_drug_spline.integral(0, 60)
+        row_indx+=1
+
+    col_indx+=1
+
+ax.plot(dilution_log[1:], curve_area_no_drug_avg, marker='o', markersize=3,color=cmap(0),label='no drug')
+ax.plot(dilution_log[1:], curve_area_drug[0], marker='o', markersize=3,color=cmap(0.33),label='1xMIC')
+ax.plot(dilution_log[1:], curve_area_drug[1], marker='o', markersize=3,color=cmap(0.66),label='10xMIC')
+ax.plot(dilution_log[1:], curve_area_drug[2], marker='o', markersize=3,color=cmap(0.99),label='100xMIC')
+
+ax.legend(frameon=False,fontsize=12)
+
+dilution_xlabel = ['$2^{' + str(d) + '}$' for d in dilution_log]
+ax.set_xticks(np.arange(1,10))
+ax.set_xticklabels(dilution_xlabel[1:])
+
+ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
+ax.tick_params(axis='both',labelsize=12)
+
+ax.set_ylabel('AUC RFU (a.u.)',fontsize=14)
+ax.set_xlabel('Dilution',fontsize=14)
+
+fig3.tight_layout()
+# %%
+all_auc_data = np.concatenate((curve_area_no_drug,curve_area_drug))
+ydata = np.mean(np.concatenate((curve_area_no_drug,curve_area_drug)),axis=0)
+yerr = np.std(np.concatenate((curve_area_no_drug,curve_area_drug)),axis=0)/(np.sqrt(6))
+
+res = stats.linregress(ydata,dilution_log[1:])
+
+def rfu_to_cell_count(rfu):
+    dilution_factor = 8.66 + (-1.812*10**-5)*rfu
+    dilution_factor=2**(-dilution_factor)
+    return dilution_factor*90000
+# %%
+K = (432/50)*10**5 # carrying capacity cells per uL
+cell_count = [K/(2**d) for d in dilution_log]
+cell_count_log = np.log(cell_count)
+
+def logistic_eqn(x,y0,x_50,n):
+    return y0/(1+(x/x_50)**n)
+
+fig,ax = plt.subplots()
+
+ax.errorbar(ydata,cell_count[1:],xerr=yerr,yerr=None,fmt='o',color='black')
+ax.set_yscale('log')
+
+
+# for data in all_auc_data:
+#     ax.plot(dilution_log[1:],data)
+
+# norm_factor = np.max(ydata)
+# ydata_norm = ydata/np.max(ydata)
+
+
+# popt,pcov = sciopt.curve_fit(logistic_eqn,cell_count_log[1:],ydata_norm)
+
+# cell_count_fit = np.arange(cell_count_log[1],cell_count_log[-1],0.1)
+# yfit = norm_factor*logistic_eqn(cell_count_fit,popt[0],popt[1],popt[2])
+
+# ax.plot(cell_count_fit,yfit,color='red')
+# # dilution_xlabel = ['$2^{' + str(d) + '}$' for d in dilution_log]
+
+# ax.set_xticks(np.arange(1,10))
+# ax.set_xticklabels(cell_count[1:])
+
+# ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
+# ax.tick_params(axis='both',labelsize=12)
+
+# ax.set_ylabel('AUC$_{60}$ (a.u.)',fontsize=14)
+# ax.set_xlabel('Dilution',fontsize=14)
 # %%
