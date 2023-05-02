@@ -265,21 +265,31 @@ for row in row_list:
 #%% fluorescence at t = 3600
 
 time_indx = np.argwhere(time_vect>=3600)[0][0]
-fig,ax_list = plt.subplots(nrows=3,ncols=2,figsize=(8,10))
-ax_list_t = ax_list.reshape(-1)
+# fig,ax_list = plt.subplots(nrows=3,ncols=2,figsize=(8,10))
+# ax_list_t = ax_list.reshape(-1)
 
 fig2,ax_all = plt.subplots()
 
 
-def rfu_to_cell_count(rfu):
-    logRFU = np.log10(rfu)
-    logN = 3.52*np.log10(21*(logRFU-4.02))
+# def rfu_to_cell_count(rfu):
+#     logRFU = np.log10(rfu)
+#     logN = 3.52*np.log10(21*(logRFU-4.02))
 
-    return 10**logN
+#     return 10**logN
+
+def rfu_to_cell_count(rfu):
+
+    res = []
+
+    for r in rfu:
+        dilution_factor = 8.66 + (-1.812*10**-5)*r
+        dilution_factor=2**(-dilution_factor)
+        res.append(dilution_factor*90000)
+    return res
 
 cell_count = []
 
-cal_norm_factor = 0.5/1.4
+cal_norm_factor = 1
 
 fluor_3600 = []
 samples = ['0','1','2','3','4']
@@ -299,21 +309,23 @@ for row in row_list:
         f = ts[time_indx]
         fluor_t.append(f*cal_norm_factor)
         sample_indx+=1
-    ax = ax_list_t[row_indx]
+    # ax = ax_list_t[row_indx]
     cc_t = rfu_to_cell_count(fluor_t)
 
     cell_count.append(cc_t)
 
-    ax.plot(sample_times,np.log10(cc_t))
+    # ax.plot(sample_times,np.log10(cc_t))
     ax_all.plot(sample_times,cc_t,color=cmap(row_indx/5),label=round(dc[row_indx],2))
-    ax.set_ylim(4.05,5.65)
+    # ax.set_ylim(4.05,5.65)
     row_indx+=1
 
 ax_all.set_yscale('log')
-ax_all.set_ylabel('Cell count',fontsize=12)
+ax_all.set_ylabel('Cell count (per uL)',fontsize=12)
 ax_all.set_xlabel('Time (min)',fontsize=12)
 ax_all.legend(frameon=False)
+# ax_all.set_ylim(100,10000)
 
+fig.savefig('time_kill_zoomed.png',bbox_inches='tight')
 #%%
 
 sample_times_hr = np.array(sample_times)/60
