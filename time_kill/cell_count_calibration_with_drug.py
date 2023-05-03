@@ -7,8 +7,8 @@ from scipy import stats
 import scipy.interpolate as interp
 import scipy.optimize as sciopt
 
-ab_plate_path = 'calibration_04132023/EK_AB_20230414_111621.xlsx'
-od_plate_path = 'calibration_04132023/EK_single_OD600_20230413_120140.xlsx'
+ab_plate_path = 'time_kill/calibration_04132023/EK_AB_20230414_111621.xlsx'
+od_plate_path = 'time_kill/calibration_04132023/EK_single_OD600_20230413_120140.xlsx'
 p_ab = AutoRate.Plate(ab_plate_path)
 p_od = AutoRate.Plate(od_plate_path,mode='single_measurement')
 od_data = p_od.od_data_to_dict(p_od.data)
@@ -338,10 +338,23 @@ def logistic_eqn(x,y0,x_50,n):
 
 fig,ax = plt.subplots()
 
-ax.errorbar(ydata,cell_count[1:],xerr=yerr,yerr=None,fmt='o',color='black')
+norm_factor = np.max(ydata)
+auc_norm = ydata/np.max(ydata)
+yerr_norm = yerr/norm_factor
+cell_count_norm = cell_count/np.max(cell_count)
+
+ax.errorbar(auc_norm,cell_count_norm[1:],xerr=yerr_norm,yerr=None,fmt='o',color='black')
 ax.set_yscale('log')
 
+# res = np.polyfit(auc_norm,cell_count_norm[1:],deg=3)
+auc_norm = np.flip(auc_norm)
+cell_count_norm = np.flip(cell_count_norm)
+sfit = interp.InterpolatedUnivariateSpline(auc_norm,cell_count_norm[1:])
 
+xfit = np.arange(np.min(auc_norm),np.max(auc_norm),0.01)
+
+# yfit = res[0]*xfit**2 + res[1]*xfit + res[2]
+ax.plot(xfit,sfit(xfit))
 # for data in all_auc_data:
 #     ax.plot(dilution_log[1:],data)
 
