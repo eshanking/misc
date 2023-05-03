@@ -333,8 +333,15 @@ K = (432/50)*10**5 # carrying capacity cells per uL
 cell_count = [K/(2**d) for d in dilution_log]
 cell_count_log = np.log(cell_count)
 
-def logistic_eqn(x,y0,x_50,n):
-    return y0/(1+(x/x_50)**n)
+# def logistic_eqn(x,y0,x_50,n):
+#     return y0/(1+(x/x_50)**n)
+
+def inv_logistic(y,y0,k,x50):
+    return x50/((y0/y - 1)**k)
+
+def inv_logistic_log(y,y0,k,x50):
+    return np.log10(x50/((y0/y - 1)**k))0
+
 
 fig,ax = plt.subplots()
 
@@ -344,17 +351,25 @@ yerr_norm = yerr/norm_factor
 cell_count_norm = cell_count/np.max(cell_count)
 
 ax.errorbar(auc_norm,cell_count_norm[1:],xerr=yerr_norm,yerr=None,fmt='o',color='black')
-ax.set_yscale('log')
+# ax.set_yscale('log')
 
 # res = np.polyfit(auc_norm,cell_count_norm[1:],deg=3)
-auc_norm = np.flip(auc_norm)
-cell_count_norm = np.flip(cell_count_norm)
-sfit = interp.InterpolatedUnivariateSpline(auc_norm,cell_count_norm[1:])
 
 xfit = np.arange(np.min(auc_norm),np.max(auc_norm),0.01)
 
+p0 = [1.1,1,0.01]
+bounds = [[1.001,0,0],[10,10,0.06]]
+popt,pcov = sciopt.curve_fit(inv_logistic,auc_norm,cell_count_norm[1:],maxfev=10000,p0=p0,bounds=bounds)
+# yfit = inv_logistic(xfit,popt[0],popt[1],popt[2])
+# yfit = inv_logistic(xfit,popt[0],1,0.05)
+yfit = inv_logistic(xfit,popt[0],popt[1],popt[2])
+# sfit = interp.InterpolatedUnivariateSpline(auc_norm,cell_count_norm[1:])
+
+
+
 # yfit = res[0]*xfit**2 + res[1]*xfit + res[2]
-ax.plot(xfit,sfit(xfit))
+ax.plot(xfit,yfit)
+ax.grid(visible=True,axis='both',which='both')
 # for data in all_auc_data:
 #     ax.plot(dilution_log[1:],data)
 
