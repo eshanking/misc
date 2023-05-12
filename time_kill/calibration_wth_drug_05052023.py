@@ -67,123 +67,39 @@ def od_to_cells(od):
 cell_count = od_to_cells(od_avg)
 cell_count = cell_count - np.min(cell_count)
 
-#%% estimate ab background
-
 time_vect = np.array(p_ab.data['Time [s]'])
-# bg = np.zeros(len(time_vect))
-
-# indx = 0
-# for row in row_list:
-#     key = row + '11'
-#     bg += np.array(p_ab.data[key]).astype('float64')
-#     indx += 1
-# bg = bg/indx
-
-#%% estimate cell count per column
-
-# def od_to_cells(od):
-#     res = [297761.03865714, 324941.3815491, 17609.09483884]
-#     return res[2] + res[1]*od + res[0]*od**2
-
-# col_list = np.arange(10) + 2
-# row_list = ['B','C','D','E','F','G']
-# cell_count = []
-# od = []
-
-# for col in col_list:
-#     od_avg = 0
-#     for row in row_list:
-#         key = row + str(col)
-#         od_avg += od_data[key]
-#     od_avg = od_avg/6
-#     cell_count.append(od_to_cells(od_avg))
-#     od.append(od_avg)
-
-# cell_count_est = cell_count
-
-# cell_count_col_1 = cell_count[0]
-# cell_count = []
-
-# for i in range(10):
-#     cell_count.append(cell_count_col_1/(2**i))
 
 # %%
 
-fig,ax_list = plt.subplots(nrows=2)
+fig,ax_list = plt.subplots(nrows=3,ncols=2)
+
+ax_list = ax_list.flatten()
 cmap = mpl.colormaps['viridis']
 
 col_indx = 0
 
-for col in col_list[1:]:
-    ax = ax_list[0] 
-    ts_avg = np.zeros(len(time_vect))
-    for row in ['B','C','D']:
-        key = row + str(col)
-        ts_avg += np.array(p_ab.data[key]).astype('float64')
-    ts_avg = ts_avg/3
-    ax.plot(time_vect,ts_avg,color=cmap(col_indx/8))
-    # col_indx += 1
-    ax = ax_list[1] 
-    ts_avg = np.zeros(len(time_vect))
-    for row in ['E','F','G']:
-        key = row + str(col)
-        ts_avg += np.array(p_ab.data[key]).astype('float64')
-    ts_avg = ts_avg/3
-    ax.plot(time_vect,ts_avg,color=cmap(col_indx/8))
-    col_indx += 1
+ax_indx = 0
+for row in row_list[1:-1]:
+    col_indx = 0
+    for col in col_list[2:-1]:
+        ax = ax_list[ax_indx]
+        key = row + col
+        ax.plot(time_vect/60,np.array(p_ab.data[key]).astype('float64'),color=cmap(col_indx/8))
+        col_indx += 1
+    ax_indx += 1
 
-for ax in ax_list:
-    ax.set_xlim(0,3600)
-    ax.set_ylim(0,400000)
-# %%
-fig,ax_list = plt.subplots(nrows=4,figsize=(4,8))
-cmap = mpl.colormaps['viridis']
-
-dilution = []
-for i in range(len(col_list)):
-    dilution.append(str(2**i) + 'x')
-
-col_indx = 0
-
-for col in col_list[1:]:
-    ax = ax_list[0] 
-    ts_avg = np.zeros(len(time_vect))
-    for row in ['B','C','D']:
-        key = row + str(col)
-        ts_avg += np.array(p_ab.data[key]).astype('float64')
-    ts_avg = ts_avg/3
-    ax.plot(time_vect/60,ts_avg,color=cmap(col_indx/8))
-
-    row_indx = 1
-    for row in ['E','F','G']:
-        ax = ax_list[row_indx]
-        key = row + str(col)
-        ts = np.array(p_ab.data[key]).astype('float64')
-        ax.plot(time_vect/60,ts,color=cmap(col_indx/8),label=dilution[col_indx])
-        row_indx+=1
-    col_indx+=1
-
-ax_list[0].set_title('No drug')
-ax_list[1].set_title('1x MIC')
-ax_list[2].set_title('10x MIC')
-ax_list[3].set_title('100x MIC')
-
-for ax in ax_list:
-    ax.set_xlim(0,60)
-    ax.set_ylim(0,500000)
-    ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-    ax.set_xlabel('Time (min)')
-    ax.set_ylabel('RFU (au)')
-
-ax_list[3].legend(ncol=4,frameon=False,loc=(-0.05,-1.35))
+# for ax in ax_list:
+    # ax.set_xlim(0,60)
+    # ax.set_ylim(0,400000)
 
 fig.tight_layout()
+
 # %%
 # fig,ax_list = plt.subplots(nrows=4,figsize=(4,8))
 cmap = mpl.colormaps['viridis']
 
 dilution = []
-for i in range(len(col_list)):
+for i in range(len(col_list)-2):
     dilution.append(1/(2**i))
 
 hr1_time_indx = np.argwhere(time_vect>=3600)[0][0]
@@ -208,9 +124,16 @@ for col in col_list[2:-1]:
 RFU60_avg = np.mean(RFU_60,axis=0)
 RFU60_err = np.std(RFU_60,axis=0)/np.sqrt(6)
 
+fig,ax = plt.subplots()
+
+for row in range(6):
+    ax.plot(cell_count[1:],RFU_60[row,:],color=cmap(row/5))
+
+ax.set_xscale('log')
+
 # %%
 fig,ax = plt.subplots()
-cell_count[-1] = 1
+# cell_count[-1] = 1
 ax.errorbar(RFU60_avg,cell_count[1:],xerr=RFU60_err,fmt='o',color='k',capsize=5)
 
 def expon(x,y0,alpha,l):
@@ -219,217 +142,64 @@ def expon(x,y0,alpha,l):
 cell_count_norm = cell_count[1:]/np.max(cell_count[1:])
 RFU60_avg_norm = RFU60_avg/np.max(RFU60_avg)
 
-p0 = [0.1,1,0]
-popt,pcov = sciopt.curve_fit(expon,RFU60_avg_norm,cell_count_norm,p0=p0)
+ax.set_yscale('log')
+
+
+def inv_logistic(y,y0,k,x50,l):
+    return x50/((y0/(y-l) - 1)**k)
+
+p0 = [1.1,1,0.1,0.1]
+popt_weighted,pcov = sciopt.curve_fit(inv_logistic,RFU60_avg_norm,cell_count_norm,p0=p0,sigma=RFU60_err/np.max(RFU60_avg))
 # popt,pcov = sciopt.curve_fit(expon,RFU60_avg,cell_count[1:],p0=[1,1,1])
 
-xfit = np.linspace(0,1,100)
-yfit = expon(xfit,*popt)
+xfit = np.linspace(0.01,1,100)
+yfit = inv_logistic(xfit,*popt_weighted)
 
-ax.plot(xfit*np.max(RFU60_avg),yfit*np.max(cell_count[1:]),color='k')
-# ax.set_ylim(-10000,0.5*10**6)
+ax.plot(xfit*np.max(RFU60_avg),yfit*np.max(cell_count[1:]),label='weighted LS',linewidth=2)
 
-# ax.set_yscale('log')
-# ax.set_xscale('log')
-# %% linear fit
+popt,pcov = sciopt.curve_fit(inv_logistic,RFU60_avg_norm,cell_count_norm,p0=p0)
+# popt,pcov = sciopt.curve_fit(expon,RFU60_avg,cell_count[1:],p0=[1,1,1])
 
-# ydata = np.mean((no_drug_fluor,MICx100_fluor,MICx10_fluor,MICx1_fluor),axis=0)
+xfit = np.linspace(0.01,1,100)
+yfit = inv_logistic(xfit,*popt)
 
-# res = stats.linregress(dilution_log[1:],ydata)
+ax.plot(xfit*np.max(RFU60_avg),yfit*np.max(cell_count[1:]),'--',label='unweighted LS')
 
-# fig,ax = plt.subplots()
+ax.legend(frameon=False)
 
-# # K = (432/50)*10**5 # carrying capacity cells per uL
-# # cell_count = [K/(2**d) for d in dilution_log]
-# cell_count_log = np.log(cell_count)
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
 
-# rfu_data = np.concatenate((no_drug_fluor,[MICx1_fluor],[MICx10_fluor],[MICx100_fluor]))
-# rfu_data_mean = np.mean(rfu_data,axis=0)
-# rfu_err = np.std(rfu_data,axis=0)/np.sqrt(6)
-
-# # dilution_xlabel = ['$2^{' + str(d) + '}$' for d in dilution_log]
-
-# ax.errorbar(rfu_data_mean[1:],cell_count[2:],xerr=rfu_err[1:],fmt='o',color='black')
-
-# # ax.set_xticks(np.arange(1,10))
-# # ax.set_xticklabels(dilution_xlabel[1:])
-
-# ax.ticklabel_format(axis='x',style='sci',scilimits=(0,0))
-# ax.tick_params(axis='both',labelsize=12)
-
-# ax.set_xlabel('RFU$_{60}$ (a.u.)',fontsize=14)
-# ax.set_ylabel('Cell count (uL$^{-1}$)',fontsize=14)
-
-# # fit exponential
-
-# # def expon(x,y0,alpha,l):
-# #     return y0*np.exp(alpha*(x-l))
-
-# def inv_logistic(y,y0,k,x50):
-#     return x50/((y0/y - 1)**k)
-
-# rfu_norm = rfu_data_mean/np.max(rfu_data_mean)
-# cell_count_norm = cell_count/np.max(cell_count)
-
-# p0 = [1.1,1,0.01]
-# bounds = [[1.001,0,0],[10,10,0.06]]
-
-# popt,pcov = sciopt.curve_fit(inv_logistic,rfu_norm[1:],cell_count_norm[2:])
-
-# xfit = np.arange(0,1,0.01)
-# yfit = inv_logistic(xfit,popt[0],popt[1],popt[2])
-
-# xfit = xfit*np.max(rfu_data_mean)
-# yfit = yfit*np.max(cell_count)
-
-# # ax.plot(xfit,yfit)
-
-# ax.set_yscale('log')
-
-
-# # ax.annotate('$R^{2}$ = ' + str(round(res.rvalue**2,3)),(1,50000),fontsize=12)
-
-# # fig.savefig('cell_count_lin_regress.png',bbox_inches='tight')
-# # %% RFU to cell count
-
-# # res = stats.linregress(ydata,dilution_log[1:])
-
-# def rfu_to_cell_count(rfu):
-#     dilution_factor = 8.66 + (-1.812*10**-5)*rfu
-#     dilution_factor=2**(-dilution_factor)
-#     return dilution_factor*90000
+ax.set_xlabel('RFU$_{60}$',fontsize=14)
+ax.set_ylabel('Cell Count (cells/$\mu$L)',fontsize=14)
+ax.tick_params(labelsize=12)
 # %%
 
-# Graphs for fluorescence values vs. dilution using area under the curve from 0-60 min
-# print('Graphs for fluorescence values vs. dilution using area under the curve from 0-60 min\n')
-# fig3,ax = plt.subplots()
+def inv_logistic(y,y0,k,x50,l):
+    return x50/((y0/(y-l) - 1)**k)
 
-# col_indx=0
+def RFU_to_cell_count(RFU):
+    """Generates a cell count estimate from RFU data at 1 hour timepoint.
 
-# curve_area_no_drug_avg = np.zeros(9)
-# curve_area_no_drug = np.zeros((3,9))
-# curve_area_drug = np.zeros((3, 9))
+    RFU data was calculated with a constant gain of 40.
 
-# for col in col_list[1:]:
-#     ts_avg = np.zeros(len(time_vect))
+    Args:
+        RFU (float): Measured RFU value from 1 hour timepoint
+
+    Returns:
+        float: Estimated cell count (cells/uL).
+    """
+     
+    RFU_norm_const = 5868
+
+    if RFU > RFU_norm_const or RFU < 500:
+        print('Warning: RFU value is outside of calibration range.')
     
-#     row_indx = 0
-#     for row in ['B','C','D']:
-#         key = row + str(col)
-#         ts = np.array(p_ab.data[key]).astype('float64') - bg
-#         ts_spline = interp.InterpolatedUnivariateSpline(time_vect[:-1:]/60, ts[:-1:])
-#         curve_area_no_drug[row_indx][col_indx] = ts_spline.integral(0, 60)
-#         ts_avg += ts
-#         row_indx += 1
-#     ts_avg = ts_avg/3
-#     ts_spline = interp.InterpolatedUnivariateSpline(time_vect[:-1:]/60, ts_avg[:-1:])
+    cell_count_norm_const = 905401
+    popt = [0.94254949, 0.77916359, 0.09317131, 0.10172957]
 
-#     curve_area_no_drug_avg[col_indx] = ts_spline.integral(0, 60)
+    est = inv_logistic(RFU/RFU_norm_const,*popt)*cell_count_norm_const
 
-#     row_indx = 0
-#     for row in ['E','F','G']:
+    return est
 
-#         key = row + str(col)
-#         ts = np.array(p_ab.data[key]).astype('float64') - bg
-#         ts_drug_spline = interp.InterpolatedUnivariateSpline(time_vect[:-1:]/60, ts[:-1:])
-#         #ax_list3[row_indx].plot(xfine,ts_drug_spline(xfine, 0),color=cmap(col_indx/8),label=dilution[col_indx])
-#         curve_area_drug[row_indx][col_indx] = ts_drug_spline.integral(0, 60)
-#         row_indx+=1
-
-#     col_indx+=1
-
-# ax.plot(dilution_log[1:], curve_area_no_drug_avg, marker='o', markersize=3,color=cmap(0),label='no drug')
-# ax.plot(dilution_log[1:], curve_area_drug[0], marker='o', markersize=3,color=cmap(0.33),label='1xMIC')
-# ax.plot(dilution_log[1:], curve_area_drug[1], marker='o', markersize=3,color=cmap(0.66),label='10xMIC')
-# ax.plot(dilution_log[1:], curve_area_drug[2], marker='o', markersize=3,color=cmap(0.99),label='100xMIC')
-
-# ax.legend(frameon=False,fontsize=12)
-
-# dilution_xlabel = ['$2^{' + str(d) + '}$' for d in dilution_log]
-# ax.set_xticks(np.arange(1,10))
-# ax.set_xticklabels(dilution_xlabel[1:])
-
-# ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-# ax.tick_params(axis='both',labelsize=12)
-
-# ax.set_ylabel('AUC RFU (a.u.)',fontsize=14)
-# ax.set_xlabel('Dilution',fontsize=14)
-
-# fig3.tight_layout()
-# # %%
-# all_auc_data = np.concatenate((curve_area_no_drug,curve_area_drug))
-# ydata = np.mean(np.concatenate((curve_area_no_drug,curve_area_drug)),axis=0)
-# yerr = np.std(np.concatenate((curve_area_no_drug,curve_area_drug)),axis=0)/(np.sqrt(6))
-
-# res = stats.linregress(ydata,dilution_log[1:])
-
-# def rfu_to_cell_count(rfu):
-#     dilution_factor = 8.66 + (-1.812*10**-5)*rfu
-#     dilution_factor=2**(-dilution_factor)
-#     return dilution_factor*90000
-# # %%
-# K = (432/50)*10**5 # carrying capacity cells per uL
-# cell_count = [K/(2**d) for d in dilution_log]
-# cell_count_log = np.log(cell_count)
-
-# # def logistic_eqn(x,y0,x_50,n):
-# #     return y0/(1+(x/x_50)**n)
-
-# def inv_logistic(y,y0,k,x50):
-#     return x50/((y0/y - 1)**k)
-
-# def inv_logistic_log(y,y0,k,x50):
-#     return np.log10(x50/((y0/y - 1)**k))
-
-
-# fig,ax = plt.subplots()
-
-# norm_factor = np.max(ydata)
-# auc_norm = ydata/np.max(ydata)
-# yerr_norm = yerr/norm_factor
-# cell_count_norm = cell_count/np.max(cell_count)
-
-# ax.errorbar(auc_norm,cell_count_norm[1:],xerr=yerr_norm,yerr=None,fmt='o',color='black')
-# # ax.set_yscale('log')
-
-# # res = np.polyfit(auc_norm,cell_count_norm[1:],deg=3)
-
-# xfit = np.arange(np.min(auc_norm),np.max(auc_norm),0.01)
-
-# p0 = [1.1,1,0.01]
-# bounds = [[1.001,0,0],[10,10,0.06]]
-# popt,pcov = sciopt.curve_fit(inv_logistic,auc_norm,cell_count_norm[1:],maxfev=10000,p0=p0,bounds=bounds)
-# # yfit = inv_logistic(xfit,popt[0],popt[1],popt[2])
-# # yfit = inv_logistic(xfit,popt[0],1,0.05)
-# yfit = inv_logistic(xfit,popt[0],popt[1],popt[2])
-# # sfit = interp.InterpolatedUnivariateSpline(auc_norm,cell_count_norm[1:])
-
-
-
-# # yfit = res[0]*xfit**2 + res[1]*xfit + res[2]
-# ax.plot(xfit,yfit)
-# ax.grid(visible=True,axis='both',which='both')
-# # for data in all_auc_data:
-# #     ax.plot(dilution_log[1:],data)
-
-# # norm_factor = np.max(ydata)
-# # ydata_norm = ydata/np.max(ydata)
-
-
-# # popt,pcov = sciopt.curve_fit(logistic_eqn,cell_count_log[1:],ydata_norm)
-
-# # cell_count_fit = np.arange(cell_count_log[1],cell_count_log[-1],0.1)
-# # yfit = norm_factor*logistic_eqn(cell_count_fit,popt[0],popt[1],popt[2])
-
-# # ax.plot(cell_count_fit,yfit,color='red')
-# # # dilution_xlabel = ['$2^{' + str(d) + '}$' for d in dilution_log]
-
-# # ax.set_xticks(np.arange(1,10))
-# # ax.set_xticklabels(cell_count[1:])
-
-# # ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-# # ax.tick_params(axis='both',labelsize=12)
-
-# # ax.set_ylabel('AUC$_{60}$ (a.u.)',fontsize=14)
-# # ax.set_xlabel('Dilution',fontsize=14)
-# # %%
+# %%
