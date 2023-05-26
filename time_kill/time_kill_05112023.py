@@ -52,6 +52,8 @@ def RFU_to_cell_count(RFU):
 exp_folder = 'tk_05112023/'
 plate_paths = os.listdir(exp_folder)
 
+plate_paths = [p for p in plate_paths if p.endswith('.xlsx')]
+
 plate_paths.sort(key=natural_keys)
 
 #%%
