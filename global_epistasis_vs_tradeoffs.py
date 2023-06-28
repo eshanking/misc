@@ -35,7 +35,7 @@ def get_background(N: int, p: int):
     binary_numbers = []
 
     # Iterate over the range from 0 to 2^N - 1
-    for i in range(N):
+    for i in range(2**N):
         # Convert the current number to binary
         binary = bin(i)[2:].zfill(N)
 
@@ -185,7 +185,7 @@ def get_max_ge_slope(p):
 # ax.spines['right'].set_visible(False)
 # %% 2 alleles (4 genotpyes)
 
-p = Population(fitness_data='random',n_allele=2)
+p = Population(fitness_data='random',n_allele=2,death_model='constant')
 
 df = []
 tradeoff_strength = []
